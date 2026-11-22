@@ -102,14 +102,6 @@ class App:
         self.language_box = ttk.Combobox(lang_row, textvariable=self.language, state="readonly", width=22,
                                          values=[AUTO_LANGUAGE, *LANGUAGE_CODES])
         self.language_box.pack(side="left", padx=(6, 0))
-        self.fast = tk.BooleanVar()
-        self.fast_box = ttk.Checkbutton(options, text="Fast mode (about 2.5x faster, slightly less accurate)",
-                                        variable=self.fast)
-        self.fast_box.pack(anchor="w")
-        self.redo = tk.BooleanVar()
-        self.redo_box = ttk.Checkbutton(options, text="Redo videos that already have captions",
-                                        variable=self.redo, command=lambda: self.inputs and self.load(self.inputs))
-        self.redo_box.pack(anchor="w", pady=(2, 0))
 
         buttons = ttk.Frame(root)
         buttons.pack(fill="x", padx=12, pady=12)
@@ -117,8 +109,6 @@ class App:
         self.start_btn.pack(side="left")
         self.stop_btn = ttk.Button(buttons, text="Stop", command=self.stop, state="disabled")
         self.stop_btn.pack(side="left", padx=(8, 0))
-        self.new_btn = ttk.Button(buttons, text="New batch", command=self.new_batch)
-        self.new_btn.pack(side="left", padx=(8, 0))
         ttk.Button(buttons, text="Show in folder", command=self.show_in_folder).pack(side="right")
         ttk.Button(buttons, text="Logs", command=self.show_logs).pack(side="right", padx=(0, 8))
 
@@ -149,8 +139,9 @@ class App:
         if files:
             self.load(list(files))
 
-    def new_batch(self):
+    def start_over(self):
         """Clear the window so another folder or set of videos can be chosen."""
+        self.start_btn.config(text="Start", command=self.start)
         self.inputs, self.todo, self.durations = [], [], {}
         self.tree.delete(*self.tree.get_children())
         self.rows.clear()
@@ -162,17 +153,17 @@ class App:
     def load(self, inputs):
         """Scan in the background (ffprobe on many files takes a few seconds)."""
         self.inputs = [str(Path(p)) for p in inputs]
+        self.start_btn.config(text="Start", command=self.start)
         self.set_busy(True)
         self.summary.config(text="Scanning…")
         self.tree.delete(*self.tree.get_children())
         self.rows.clear()
-        redo = self.redo.get()
 
         def scan():
             try:
                 videos = bs.collect(self.inputs)
                 clashes = bs.name_clashes(videos)
-                todo = [v for v in videos if v not in clashes and (redo or not v.with_suffix(".srt").exists())]
+                todo = [v for v in videos if v not in clashes and not v.with_suffix(".srt").exists()]
                 others = {v: names for v in todo if (names := bs.other_captions(v))}
                 durations = {v: bs.video_duration(v) for v in todo}
             except Exception as e:  # e.g. the drive was unplugged or a folder can't be read
@@ -198,8 +189,6 @@ class App:
                 status, tag = "⚠ name clash", ("warn",)
             elif v not in durations:
                 status, tag = "✔ already done", ("done",)
-            elif v.with_suffix(".srt").exists():
-                status, tag = "waiting (redo)", ()
             else:
                 status, tag = ("waiting (has captions)" if v in others else "waiting"), ()
             self.rows[v] = self.tree.insert("", "end", text=label, tags=tag, values=(status,))
@@ -221,10 +210,6 @@ class App:
 
     # ---- running --------------------------------------------------------
     def start(self):
-        if self.redo.get() and (n := sum(v.with_suffix(".srt").exists() for v in self.todo)):
-            if not messagebox.askyesno("Batscribe", f"This replaces the existing .srt of {n} video{'' if n == 1 else 's'}. Continue?",
-                                       parent=self.root):
-                return
         self.finished = set()
         self.stop_flag.clear()
         self.running = True
@@ -236,8 +221,8 @@ class App:
             try:
                 bs.run_batch(self.todo, self.durations, bs.ERROR_LOG,
                              on_event=lambda kind, **info: self.events.put((kind, info)),
-                             should_stop=self.stop_flag.is_set, skip_existing=not self.redo.get(),
-                             fast=self.fast.get(), language=LANGUAGE_CODES.get(self.language.get()))
+                             should_stop=self.stop_flag.is_set,
+                             fast=True, language=LANGUAGE_CODES.get(self.language.get()))
             except Exception as e:  # e.g. model/GPU failed to load
                 self.events.put(("crashed", {"error": str(e)}))
 
@@ -317,10 +302,11 @@ class App:
         for v in self.todo:  # the video that was interrupted, if any
             if self.tree.set(self.rows[v], "status").startswith("▶"):
                 self.set_status(v, "stopped")
-        self.todo = [v for v in self.todo
-                     if v not in self.finished and (self.redo.get() or not v.with_suffix(".srt").exists())]
+        self.todo = [v for v in self.todo if v not in self.finished and not v.with_suffix(".srt").exists()]
         self.running = False
         self.set_busy(False)
+        if not stopped and not gpu_error:  # stopped or GPU-failed batches keep "Start" to continue
+            self.start_btn.config(text="Start over", command=self.start_over, state="normal")
         self.root.title("Batscribe")
         msg = f"{'Stopped' if stopped else 'Finished'} after {bs.fmt_dur(elapsed)}: {ok} captioned, {failed} failed."
         self.stats.config(text=msg)
@@ -330,7 +316,7 @@ class App:
             msg += ("\n\nThe GPU failed, so the remaining videos were not attempted:\n"
                     f"{gpu_error}\n\nClose other GPU-heavy apps (or restart the PC), then press Start to continue.")
         elif self.todo and not stopped:
-            msg += "\n\nPress Start to retry the failed videos."
+            msg += "\n\nTo retry the failed videos, choose the same folder again and press Start."
         self.notify("Batscribe", msg, error=bool(failed))
 
     def on_crashed(self, error):
@@ -349,7 +335,7 @@ class App:
 
     def set_busy(self, busy):
         self.busy = busy
-        for btn in (self.browse_btn, self.files_btn, self.new_btn, self.fast_box, self.redo_box):
+        for btn in (self.browse_btn, self.files_btn):
             btn.config(state="disabled" if busy else "normal")
         self.language_box.config(state="disabled" if busy else "readonly")
         self.start_btn.config(state="disabled" if busy or not self.todo else "normal")

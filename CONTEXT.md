@@ -43,15 +43,15 @@ One run over the to-do list of Videos chosen from the Inputs (every Video that i
 _Avoid_: Job, run, session
 
 **Redo**:
-Including Captioned Videos in a Batch so their Caption files are replaced. Called `--force` on the command line.
+Including Captioned Videos in a Batch so their Caption files are replaced. Called `--force` on the command line; the desktop app has no Redo.
 _Avoid_: Force, overwrite, re-run
 
 **Normal mode**:
-The default, most accurate way of transcribing.
+The most accurate way of transcribing; the command line's default.
 _Avoid_: Accurate mode, slow mode
 
 **Fast mode**:
-An opt-in way of transcribing about 2.5x faster with slightly worse accuracy.
+Transcribing about 2.5x faster with slightly worse accuracy; always used by the desktop app, opt-in (`--fast`) on the command line.
 _Avoid_: Batched mode, turbo
 
 **Spoken language**:

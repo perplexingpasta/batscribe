@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Desktop app: Fast mode is now always on and its checkbox is gone; the command line still uses normal mode unless you pass `--fast` (ADR 0007).
+- Desktop app: the Redo checkbox is gone. To redo videos, delete their `.srt` files or use `--force` on the command line.
+- Desktop app: the **New batch** button is gone. When a batch finishes, **Start** becomes **Start over**, which clears the window.
+
 ## 0.1.0 – 2026-11-22
 
 First public release.

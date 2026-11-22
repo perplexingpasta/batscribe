@@ -29,7 +29,7 @@ Course/
 - **Two ways to use it**: a desktop window with drag and drop, or a command line / drag-onto-`captions.bat`.
 - **99 languages**: the spoken language is detected per video, or you can choose it.
 - **Progress you can trust**: per-video and overall progress, speed (e.g. "24x realtime") and time left.
-- **Fast mode** (optional): about 2.5x faster, slightly less accurate.
+- **Fast mode**: the desktop app uses it, about 2.5x faster than normal mode for slightly lower accuracy. The command line uses normal mode unless you pass `--fast`.
 - **Handles long videos and long nights**: long videos are processed in pieces to keep memory low, the PC is kept awake during a run, and you get a sound and message when it finishes.
 - **Safe with problems**: a broken video is logged and skipped; a GPU failure stops the run cleanly; a crash is reported the next time you open the app.
 
@@ -69,12 +69,10 @@ Open **Batscribe** from the Start menu (or run `.venv\Scripts\pythonw.exe batscr
 2. Check the list: what's to do, what's already captioned, and any warnings.
 3. Press **Start**. You can **Stop** at any time; the video in progress is simply redone next time.
 
-Double-click a video to play it. **Logs** opens the history of all runs; **New batch** clears the window.
+Double-click a video to play it. **Logs** opens the history of all runs. When a batch finishes, **Start** becomes **Start over**, which clears the window so you can choose new videos.
 
-Options:
+Option:
 - **Spoken language**: Auto-detect (the default) or a specific language. Choosing one avoids the rare wrong guess, e.g. on a video that starts with music.
-- **Fast mode**: about 2.5x faster, slightly less accurate.
-- **Redo videos that already have captions**: replaces existing `.srt` files (asks first).
 
 ### Drag and drop onto `captions.bat`
 
@@ -120,7 +118,7 @@ All logs are in `%LOCALAPPDATA%\Batscribe` (the **Logs** button opens the histor
 - **"No NVIDIA GPU was found"** (or it's unexpectedly slow): update the NVIDIA driver; on laptops, make sure the GPU isn't disabled. Without a GPU, Batscribe runs on the CPU.
 - **"The GPU failed"**: usually out of video memory. Close games or other GPU-heavy apps (or restart), then press Start again; finished videos are kept. Fast mode needs more VRAM than normal mode.
 - **"The last run didn't finish"**: the PC crashed, lost power or the window was closed. Choose the same folder and press Start to continue.
-- **Wrong language in the captions**: choose the language instead of Auto-detect, then redo those videos.
+- **Wrong language in the captions**: choose the language instead of Auto-detect, then redo those videos (delete their `.srt` files, or use `--force` on the command line).
 
 ## Contributing
 
